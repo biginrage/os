@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>VELOX OS — Design Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%;width:100%}
+body{background:#040810;font-family:'Syne',sans-serif;color:#fff;overflow:hidden}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:rgba(255,255,255,0.02)}
+::-webkit-scrollbar-thumb{background:rgba(0,220,180,0.25);border-radius:2px}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.85)}}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.fs{animation:fadeSlide 0.3s ease both}
+button{font-family:'DM Mono',monospace;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef}=React;
+const AC="#00dcb4";
+const sections=[
+  {id:"vision",label:"01 Vision",icon:"◈"},
+  {id:"architecture",label:"02 Architecture",icon:"⬡"},
+  {id:"ux",label:"03 UX Design",icon:"◎"},
+  {id:"smoothness",label:"04 Smoothness",icon:"∿"},
+  {id:"ai",label:"05 AI Layer",icon:"⟁"},
+  {id:"audio",label:"06 Audio/Visual",icon:"◉"},
+  {id:"hardware",label:"07 Hardware",icon:"▣"},
+  {id:"ecosystem",label:"08 Ecosystem",icon:"⬘"},
+  {id:"security",label:"09 Security",icon:"⬟"},
+  {id:"business",label:"10 Business",icon:"◆"},
+  {id:"roadmap",label:"11 Roadmap",icon:"→"},
+  {id:"execution",label:"12 Execution",icon:"✦"},
+];
+
+const Chip=({children,accent=false})=>(
+  <span style={{display:"inline-block",padding:"3px 10px",borderRadius:"4px",fontSize:"11px",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",background:accent?"rgba(0,220,180,0.12)":"rgba(255,255,255,0.06)",border:`1px solid ${accent?"rgba(0,220,180,0.35)":"rgba(255,255,255,0.1)"}`,color:accent?AC:"rgba(255,255,255,0.55)",marginRight:"6px",marginBottom:"6px"}}>{children}</span>
+);
+const Tag=({children})=>(
+  <div style={{display:"inline-flex",alignItems:"center",padding:"6px 12px",borderRadius:"6px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",fontSize:"12px",color:"rgba(255,255,255,0.6)",marginRight:"8px",marginBottom:"8px",fontFamily:"'DM Mono',monospace"}}>{children}</div>
+);
+const H=({children})=><span style={{color:AC,fontWeight:"600"}}>{children}</span>;
+const Card=({children,accent=false,glow=false,style={}})=>(
+  <div style={{background:accent?"rgba(0,220,180,0.05)":"rgba(255,255,255,0.03)",border:`1px solid ${accent?"rgba(0,220,180,0.2)":"rgba(255,255,255,0.07)"}`,borderRadius:"12px",padding:"24px",boxShadow:glow?"0 0 40px rgba(0,220,180,0.08)":"none",...style}}>{children}</div>
+);
+const SH=({number,title,subtitle})=>(
+  <div style={{marginBottom:"40px"}}>
+    <div style={{fontFamily:"'DM Mono',monospace",fontSize:"11px",color:AC,letterSpacing:"0.2em",marginBottom:"10px"}}>SECTION {number}</div>
+    <h2 style={{fontSize:"clamp(22px,4vw,38px)",fontWeight:"700",fontFamily:"'Syne',sans-serif",background:"linear-gradient(135deg,#ffffff 0%,rgba(255,255,255,0.6) 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",margin:"0 0 10px 0",lineHeight:"1.1"}}>{title}</h2>
+    {subtitle&&<p style={{color:"rgba(255,255,255,0.4)",fontSize:"13px",fontFamily:"'DM Mono',monospace",letterSpacing:"0.04em",margin:0}}>{subtitle}</p>}
+  </div>
+);
+const Bar=({label,value,color=AC})=>(
+  <div style={{marginBottom:"13px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:"4px"}}>
+      <span style={{fontSize:"10px",color:"rgba(255,255,255,0.45)",fontFamily:"'DM Mono',monospace"}}>{label}</span>
+      <span style={{fontSize:"10px",color,fontFamily:"'DM Mono',monospace"}}>{value}%</span>
+    </div>
+    <div style={{height:"2px",background:"rgba(255,255,255,0.06)",borderRadius:"2px",overflow:"hidden"}}>
+      <div style={{height:"100%",width:`${value}%`,background:color,borderRadius:"2px",boxShadow:`0 0 8px ${color}80`}}/>
+    </div>
+  </div>
+);
+const AN=({label,sub,x,y,accent})=>(
+  <div style={{position:"absolute",left:x,top:y,transform:"translate(-50%,-50%)",background:accent?"rgba(0,220,180,0.12)":"rgba(255,255,255,0.05)",border:`1px solid ${accent?"rgba(0,220,180,0.4)":"rgba(255,255,255,0.12)"}`,borderRadius:"8px",padding:"8px 13px",textAlign:"center",minWidth:"100px",boxShadow:accent?"0 0 20px rgba(0,220,180,0.15)":"none"}}>
+    <div style={{fontSize:"11px",fontWeight:"700",color:accent?AC:"rgba(255,255,255,0.85)",fontFamily:"'Syne',sans-serif"}}>{label}</div>
+    {sub&&<div style={{fontSize:"9px",color:"rgba(255,255,255,0.35)",fontFamily:"'DM Mono',monospace",marginTop:"2px"}}>{sub}</div>}
+  </div>
+);
+
+const MockUI=()=>{
+  const [time,setTime]=useState(new Date());
+  const [speed,setSpeed]=useState(68);
+  const [tab,setTab]=useState("home");
+  useEffect(()=>{
+    const t=setInterval(()=>setTime(new Date()),1000);
+    const s=setInterval(()=>setSpeed(p=>Math.max(50,Math.min(95,p+(Math.random()-.5)*4))),2000);
+    return()=>{clearInterval(t);clearInterval(s)};
+  },[]);
+  const hh=time.getHours().toString().padStart(2,"0");
+  const mm=time.getMinutes().toString().padStart(2,"0");
+  return(
+    <div style={{width:"100%",aspectRatio:"16/7",background:"linear-gradient(160deg,#050a12 0%,#080e18 60%,#060b10 100%)",borderRadius:"16px",overflow:"hidden",border:"1px solid rgba(255,255,255,0.08)",display:"flex",boxShadow:"0 40px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(0,220,180,0.05)",fontFamily:"'Syne',sans-serif"}}>
+      <div style={{width:"26%",borderRight:"1px solid rgba(255,255,255,0.05)",padding:"16px 14px",display:"flex",flexDirection:"column",gap:"12px",background:"rgba(0,0,0,0.3)"}}>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:"8px",color:"rgba(255,255,255,0.3)",letterSpacing:"0.15em",fontFamily:"'DM Mono',monospace",marginBottom:"3px"}}>KM/H</div>
+          <div style={{fontSize:"clamp(22px,5vw,40px)",fontWeight:"800",color:"#fff",lineHeight:1,textShadow:"0 0 30px rgba(0,220,180,0.3)",transition:"all 0.6s ease"}}>{Math.round(speed)}</div>
+          <div style={{fontSize:"8px",color:AC,letterSpacing:"0.1em",fontFamily:"'DM Mono',monospace",marginTop:"3px"}}>VELOX DRIVE</div>
+        </div>
+        <div style={{height:"1px",background:"rgba(255,255,255,0.05)"}}/>
+        <div>
+          <div style={{fontSize:"7px",color:"rgba(255,255,255,0.25)",letterSpacing:"0.12em",marginBottom:"5px",fontFamily:"'DM Mono',monospace"}}>BATTERY</div>
+          <div style={{height:"3px",background:"rgba(255,255,255,0.06)",borderRadius:"2px",overflow:"hidden"}}>
+            <div style={{width:"73%",height:"100%",background:`linear-gradient(90deg,${AC},#00b090)`,borderRadius:"2px",boxShadow:"0 0 8px rgba(0,220,180,0.5)"}}/>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:"3px"}}>
+            <span style={{fontSize:"8px",color:AC,fontFamily:"'DM Mono',monospace"}}>73%</span>
+            <span style={{fontSize:"8px",color:"rgba(255,255,255,0.3)",fontFamily:"'DM Mono',monospace"}}>~218km</span>
+          </div>
+        </div>
+        <div style={{height:"1px",background:"rgba(255,255,255,0.05)"}}/>
+        <div style={{display:"flex",gap:"6px"}}>
+          {["ECO","AWD","ABS"].map(i=>(
+            <div key={i} style={{flex:1,textAlign:"center",padding:"3px",borderRadius:"4px",fontSize:"7px",fontFamily:"'DM Mono',monospace",background:i==="ECO"?"rgba(0,220,180,0.15)":"rgba(255,255,255,0.04)",border:`1px solid ${i==="ECO"?"rgba(0,220,180,0.4)":"rgba(255,255,255,0.07)"}`,color:i==="ECO"?AC:"rgba(255,255,255,0.3)"}}>{i}</div>
+          ))}
+        </div>
+      </div>
+      <div style={{flex:1,display:"flex",flexDirection:"column"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+          <div style={{fontSize:"9px",color:"rgba(255,255,255,0.4)",fontFamily:"'DM Mono',monospace"}}>SAN FRANCISCO — 72°F</div>
+          <div style={{fontSize:"12px",fontWeight:"700",color:"rgba(255,255,255,0.8)"}}>{hh}:{mm}</div>
+          <div style={{display:"flex",gap:"8px"}}>
+            <span style={{fontSize:"8px",color:AC,fontFamily:"'DM Mono',monospace"}}>5G ●</span>
+            <span style={{fontSize:"8px",color:"rgba(255,255,255,0.3)",fontFamily:"'DM Mono',monospace"}}>GPS ●</span>
+          </div>
+        </div>
+        <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,0.04)",padding:"0 14px"}}>
+          {["home","nav","music","climate"].map(t=>(
+            <button key={t} onClick={()=>setTab(t)} style={{padding:"7px 12px",border:"none",background:"none",fontSize:"9px",fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",color:tab===t?AC:"rgba(255,255,255,0.25)",borderBottom:`2px solid ${tab===t?AC:"transparent"}`,marginBottom:"-1px",textTransform:"uppercase",transition:"all 0.2s ease"}}>{t}</button>
+          ))}
+        </div>
+        <div style={{flex:1,padding:"13px 15px",overflow:"hidden"}}>
+          {tab==="home"&&(
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",height:"100%"}}>
+              <div style={{gridRow:"span 2",background:"rgba(0,220,180,0.05)",borderRadius:"10px",border:"1px solid rgba(0,220,180,0.12)",padding:"12px",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+                <div style={{fontSize:"8px",color:"rgba(255,255,255,0.3)",fontFamily:"'DM Mono',monospace"}}>AI COPILOT</div>
+                <div>
+                  <div style={{fontSize:"10px",color:"rgba(255,255,255,0.7)",lineHeight:"1.5",marginBottom:"8px"}}>"Traffic on I-280 ahead. Rerouting via CA-85 saves 8 min."</div>
+                  <div style={{display:"flex",gap:"6px"}}>
+                    <div style={{padding:"3px 8px",borderRadius:"4px",background:"rgba(0,220,180,0.15)",border:"1px solid rgba(0,220,180,0.3)",fontSize:"8px",color:AC,fontFamily:"'DM Mono',monospace"}}>REROUTE</div>
+                    <div style={{padding:"3px 8px",borderRadius:"4px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",fontSize:"8px",color:"rgba(255,255,255,0.4)",fontFamily:"'DM Mono',monospace"}}>DISMISS</div>
+                  </div>
+                </div>
+              </div>
+              <div style={{background:"rgba(255,255,255,0.03)",borderRadius:"10px",border:"1px solid rgba(255,255,255,0.06)",padding:"10px"}}>
+                <div style={{fontSize:"8px",color:"rgba(255,255,255,0.25)",fontFamily:"'DM Mono',monospace",marginBottom:"5px"}}>NOW PLAYING</div>
+                <div style={{fontSize:"10px",color:"rgba(255,255,255,0.8)"}}>Darkside</div>
+                <div style={{fontSize:"9px",color:"rgba(255,255,255,0.3)",fontFamily:"'DM Mono',monospace"}}>Alan Walker</div>
+              </div>
+              <div style={{background:"rgba(255,255,255,0.03)",borderRadius:"10px",border:"1px solid rgba(255,255,255,0.06)",padding:"10px"}}>
+                <div style={{fontSize:"8px",color:"rgba(255,255,255,0.25)",fontFamily:"'DM Mono',monospace",marginBottom:"5px"}}>CLIMATE</div>
+                <div style={{fontSize:"20px",fontWeight:"700",color:"#fff"}}>22°</div>
+                <div style={{fontSize:"8px",color:AC,fontFamily:"'DM Mono',monospace"}}>AUTO ●</div>
+              </div>
+            </div>
+          )}
+          {tab==="nav"&&(
+            <div style={{height:"100%",display:"flex",flexDirection:"column",gap:"8px"}}>
+              <div style={{flex:1,borderRadius:"10px",background:"linear-gradient(135deg,#0a1520,#0d1f2d)",border:"1px solid rgba(255,255,255,0.06)",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+                <svg width="100%" height="100%" style={{position:"absolute",opacity:0.13}}>
+                  {[...Array(8)].map((_,i)=><line key={`h${i}`} x1="0" y1={`${i*14}%`} x2="100%" y2={`${i*14}%`} stroke={AC} strokeWidth="0.5"/>)}
+                  {[...Array(12)].map((_,i)=><line key={`v${i}`} x1={`${i*9}%`} y1="0" x2={`${i*9}%`} y2="100%" stroke={AC} strokeWidth="0.5"/>)}
+                  <line x1="20%" y1="70%" x2="80%" y2="30%" stroke={AC} strokeWidth="2" strokeDasharray="4,3" opacity="0.8"/>
+                </svg>
+                <div style={{textAlign:"center",zIndex:1}}>
+                  <div style={{fontSize:"9px",color:AC,fontFamily:"'DM Mono',monospace"}}>MAP PREVIEW</div>
+                  <div style={{fontSize:"9px",color:"rgba(255,255,255,0.3)",marginTop:"4px"}}>Interactive in full OS</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:"6px"}}>
+                {["Home — 12 min","Work — 28 min","Last Visited"].map(d=>(
+                  <div key={d} style={{flex:1,padding:"6px",borderRadius:"8px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",fontSize:"8px",color:"rgba(255,255,255,0.5)",fontFamily:"'DM Mono',monospace",textAlign:"center"}}>{d}</div>
+                ))}
+              </div>
+            </div>
+          )}
+          {tab==="music"&&(
+            <div style={{display:"flex",flexDirection:"column",gap:"10px",height:"100%"}}>
+              <div style={{display:"flex",gap:"10px",flex:1}}>
+                <div style={{width:"68px",height:"68px",borderRadius:"10px",background:"linear-gradient(135deg,#1a0a2e,#0d1f3c)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"22px",flexShrink:0}}>♪</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.9)",marginBottom:"2px"}}>Darkside</div>
+                  <div style={{fontSize:"10px",color:"rgba(255,255,255,0.35)",marginBottom:"8px",fontFamily:"'DM Mono',monospace"}}>Alan Walker · Different World</div>
+                  <div style={{height:"2px",background:"rgba(255,255,255,0.06)",borderRadius:"2px"}}>
+                    <div style={{width:"42%",height:"100%",background:AC,borderRadius:"2px"}}/>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",marginTop:"3px"}}>
+                    <span style={{fontSize:"8px",color:"rgba(255,255,255,0.25)",fontFamily:"'DM Mono',monospace"}}>1:47</span>
+                    <span style={{fontSize:"8px",color:"rgba(255,255,255,0.25)",fontFamily:"'DM Mono',monospace"}}>4:14</span>
+                  </div>
+                </div>
+              </div>
+              <div style={{display:"flex",justifyContent:"center",gap:"16px"}}>
+                {["⏮","⏸","⏭"].map(c=>(
+                  <button key={c} style={{width:"34px",height:"34px",borderRadius:"50%",background:c==="⏸"?"rgba(0,220,180,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${c==="⏸"?"rgba(0,220,180,0.4)":"rgba(255,255,255,0.08)"}`,color:"rgba(255,255,255,0.7)",fontSize:"12px"}}>{c}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          {tab==="climate"&&(
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",height:"100%"}}>
+              {[{label:"DRIVER",temp:"22°C",fan:"3"},{label:"PASSENGER",temp:"21°C",fan:"2"}].map(z=>(
+                <div key={z.label} style={{borderRadius:"10px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",padding:"14px",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+                  <div style={{fontSize:"8px",color:"rgba(255,255,255,0.25)",fontFamily:"'DM Mono',monospace"}}>{z.label}</div>
+                  <div style={{fontSize:"28px",fontWeight:"800",color:"#fff"}}>{z.temp}</div>
+                  <div style={{fontSize:"8px",color:AC,fontFamily:"'DM Mono',monospace"}}>FAN {z.fan} ● AC ON</div>
+                </div>
+              ))}
+              <div style={{gridColumn:"span 2",borderRadius:"10px",background:"rgba(0,220,180,0.04)",border:"1px solid rgba(0,220,180,0.1)",padding:"10px",textAlign:"center",fontSize:"8px",color:AC,fontFamily:"'DM Mono',monospace"}}>AUTO CLIMATE — AI OPTIMIZED</div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div style={{width:"17%",borderLeft:"1px solid rgba(255,255,255,0.05)",padding:"12px 10px",display:"flex",flexDirection:"column",gap:"10px",background:"rgba(0,0,0,0.2)"}}>
+        <div style={{fontSize:"7px",color:"rgba(255,255,255,0.2)",fontFamily:"'DM Mono',monospace",letterSpacing:"0.12em"}}>QUICK ACCESS</div>
+        {[{icon:"🔊",label:"Vol 72"},{icon:"❄️",label:"22°C"},{icon:"📍",label:"GPS"},{icon:"📱",label:"Phone"},{icon:"⚙️",label:"Settings"}].map(item=>(
+          <div key={item.label} style={{padding:"7px",borderRadius:"8px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",textAlign:"center"}}>
+            <div style={{fontSize:"13px",marginBottom:"2px"}}>{item.icon}</div>
+            <div style={{fontSize:"7px",color:"rgba(255,255,255,0.3)",fontFamily:"'DM Mono',monospace"}}>{item.label}</div>
+          </div>
+        ))}
+        <div style={{marginTop:"auto",textAlign:"center"}}>
+          <div style={{width:"8px",height:"8px",borderRadius:"50%",background:AC,boxShadow:`0 0 8px ${AC}`,margin:"0 auto 4px",animation:"pulse 2s ease-in-out infinite"}}/>
+          <div style={{fontSize:"6px",color:AC,fontFamily:"'DM Mono',monospace"}}>VELOX LIVE</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const S1=()=>(
+  <div>
+    <SH number="01" title="OS Vision & Philosophy" subtitle="Naming the feeling before naming the product"/>
+    <div style={{marginBottom:"16px"}}>
+      <div style={{fontSize:"9px",color:AC,fontFamily:"'DM Mono',monospace",letterSpacing:"0.2em",marginBottom:"8px"}}>INTERACTIVE UI PREVIEW</div>
+      <MockUI/>
+      <div style={{fontSize:"9px",color:"rgba(255,255,255,0.2)",fontFamily:"'DM Mono',monospace",marginTop:"8px",textAlign:"center"}}>Click tabs above to explore the VELOX interface concept</div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"12px",marginBottom:"24px"}}>
+      {[{name:"VELOX",meaning:"Latin for 'fast, swift'",why:"Primal. Memorable. Global."},{name:"MERIDIAN",meaning:"Peak of the sky",why:"Premium positioning, timeless."},{name:"KIRA OS",meaning:"'Shining' in Japanese",why:"Aesthetic, aspirational."}].map(n=>(
+        <Card key={n.name} accent={n.name==="VELOX"} glow={n.name==="VELOX"}>
+          <div style={{fontSize:"18px",fontWeight:"800",color:n.name==="VELOX"?AC:"rgba(255,255,255,0.7)",fontFamily:"'Syne',sans-serif",marginBottom:"6px"}}>{n.name}</div>
+          <div style={{fontSize:"11px",color:"rgba(255,255,255,0.4)",fontFamily:"'DM Mono',monospace",marginBottom:"8px"}}>{n.meaning}</div>
+          <div style={{fontSize:"12px",color:"rgba(255,255,255,0.6)"}}>{n.why}</div>
+          {n.name==="VELOX"&&<div style={{marginTop:"10px",fontSize:"9px",color:AC,fontFamily:"'DM Mono',monospace"}}>★ RECOMMENDED</div>}
+        </Card>
+      ))}
+    </div>
+    <Card style={{marginBottom:"24px"}}>
+      <h3 style={{fontSize:"16px",fontWeight:"700",color:"rgba(255,255,255,0.9)",fontFamily:"'Syne',sans-serif",marginBottom:"14px"}}>Brand Philosophy: "Motion as Emotion"</h3>
+      <p style={{fontSize:"13px",color:"rgba(255,255,255,0.55)",lineHeight:"1.8",marginBottom:"12px"}}>VELOX is not software. It is the <H>emotional architecture of movement</H>. Every pixel, animation, and sound exists for one purpose: to make the driver feel they are piloting something genuinely extraordinary. Not a $200 Android stereo. A <H>living, breathing cockpit</H> that responds to the driver's world.</p>
+      <p style={{fontSize:"13px",color:"rgba(255,255,255,0.55)",lineHeight:"1.8"}}>Apple's philosophy: "technology for humans." Tesla's: "software-defined car." VELOX's: <H>"The journey is the product."</H> Every commute should feel cinematic. Every road trip should feel epic.</p>
+    </Card>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
+      <Card>
+        <h4 style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.8)",fontFamily:"'Syne',sans-serif",marginBottom:"12px"}}>Why Users Would Switch</h4>
+        {["Android Auto feels like a borrowed app, not a cockpit","CarPlay is brilliant — but locked to Apple hardware forever","OEM systems are slow, ugly, and never get updated","VELOX is the first system that LEARNS you","Zero-lag touch that matches $1,500 flagship phones","Cinematic UI that makes the whole car feel premium"].map(r=>(
+          <div key={r} style={{display:"flex",gap:"9px",marginBottom:"8px",alignItems:"flex-start"}}>
+            <span style={{color:AC,fontSize:"10px",marginTop:"3px",flexShrink:0}}>→</span>
+            <span style={{fontSize:"12px",color:"rgba(255,255,255,0.55)",lineHeight:"1.5"}}>{r}</span>
+          </div>
+        ))}
+      </Card>
+      <Card>
+        <h4 style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.8)",fontFamily:"'Syne',sans-serif",marginBottom:"12px"}}>Why Manufacturers Would Adopt</h4>
+        {["Faster time-to-market than building OEM software in-house","Revenue share from the VELOX App Store","OTA updates that make their cars feel better over time","Massive driver data insights (privacy-respecting)","Strong brand halo: 'Powered by VELOX'","SDK reduces their software R&D costs by 60–80%"].map(r=>(
+          <div key={r} style={{display:"flex",gap:"9px",marginBottom:"8px",alignItems:"flex-start"}}>
+            <span style={{color:AC,fontSize:"10px",marginTop:"3px",flexShrink:0}}>→</span>
+            <span style={{fontSize:"12px",color:"rgba(255,255,255,0.55)",lineHeight:"1.5"}}>{r}</span>
+          </div>
+        ))}
+      </Card>
+    </div>
+  </div>
+);
+
+const S2=()=>(
+  <div>
+    <SH number="02" title="Core Technical Architecture" subtitle="Building the kernel of automotive luxury"/>
+    <Card style={{marginBottom:"24px"}}>
+      <h3 style={{fontSize:"15px",fontWeight:"700",color:"rgba(255,255,255,0.9)",fontFamily:"'Syne',sans-serif",marginBottom:"13px"}}>Kernel Decision: Hybrid Microkernel over AOSP</h3>
+      <p style={{fontSize:"13px",color:"rgba(255,255,255,0.5)",lineHeight:"1.8",marginBottom:"13px"}}>Pure Linux monolithic kernel is fast but fragile. Pure microkernel (QNX-style) is ultra-reliable but slow. VELOX uses a <H>hybrid architecture</H>: hardened Linux 6.x PREEMPT_RT as the base, with safety-critical processes isolated in a <H>Type-1 hypervisor partition</H> (seL4 or Xen). The UI stack lives in a separate, restartable VM — so if the launcher crashes, the speedometer still works.</p>
+      <div style={{display:"flex",flexWrap:"wrap"}}>
+        {["Linux 6.x PREEMPT_RT","seL4 Hypervisor","AOSP Compatibility Layer","Custom HAL","Wayland Compositor","Vulkan 1.3","HIDL/AIDL Bridge"].map(c=><Chip key={c} accent>{c}</Chip>)}
+      </div>
+    </Card>
+    <div style={{position:"relative",height:"270px",marginBottom:"24px",background:"rgba(0,0,0,0.3)",borderRadius:"12px",border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden"}}>
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center,rgba(0,220,180,0.03) 0%,transparent 70%)"}}/>
+      <AN label="VELOX UI" sub="React Native/Skia" x="50%" y="13%" accent/>
+      <AN label="AI Engine" sub="On-device LLM" x="20%" y="33%"/>
+      <AN label="Media Stack" sub="Dolby/DTS" x="80%" y="33%"/>
+      <AN label="Compositor" sub="Wayland/Vulkan" x="50%" y="50%" accent/>
+      <AN label="HAL" sub="Hardware Abstraction" x="50%" y="67%"/>
+      <AN label="CAN Bus" sub="Vehicle Network" x="25%" y="84%"/>
+      <AN label="Linux RT Kernel" sub="PREEMPT_RT 6.x" x="75%" y="84%" accent/>
+      <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
+        {[["50%","17%","50%","46%"],["50%","46%","50%","63%"],["50%","63%","50%","80%"],["32%","84%","48%","70%"],["72%","84%","52%","70%"],["24%","37%","44%","48%"],["76%","37%","56%","48%"]].map(([x1,y1,x2,y2],i)=>(
+          <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(0,220,180,0.2)" strokeWidth="1" strokeDasharray="3,3"/>
+        ))}
+      </svg>
+      <div style={{position:"absolute",bottom:"7px",left:"50%",transform:"translateX(-50%)",fontSize:"8px",color:"rgba(255,255,255,0.2)",fontFamily:"'DM Mono',monospace"}}>VELOX LAYERED ARCHITECTURE</div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
+      <Card>
+        <h4 style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.8)",fontFamily:"'Syne',sans-serif",marginBottom:"11px"}}>Rendering Pipeline</h4>
+        <p style={{fontSize:"12px",color:"rgba(255,255,255,0.5)",lineHeight:"1.7",marginBottom:"11px"}}>VELOX uses a <H>triple-buffered Vulkan 1.3 rendering pipeline</H> with a custom scene graph engine. The compositor runs at a locked <H>120Hz</H> with adaptive sync. All UI elements are pre-compiled into GPU shaders at boot — zero JIT stutter ever.</p>
+        <Bar label="RENDER LATENCY TARGET" value={2}/>
+        <Bar label="GPU UTILIZATION (IDLE)" value={8} color="#00b4a0"/>
+        <Bar label="FRAME DROP BUDGET" value={0} color="#ff4a4a"/>
+      </Card>
+      <Card>
+        <h4 style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.8)",fontFamily:"'Syne',sans-serif",marginBottom:"11px"}}>Memory Architecture</h4>
+        <p style={{fontSize:"12px",color:"rgba(255,255,255,0.5)",lineHeight:"1.7",marginBottom:"11px"}}>VELOX employs <H>zRAM compression</H> (LZ4 algorithm, 4:1 ratio on typical UI data) + <H>predictive memory preloading</H>. Apps the driver uses at this time-of-day are preloaded 90 seconds before the car starts. Cold-launch latency for top 3 apps: <H>&lt;40ms</H>.</p>
+        <div style={{display:"flex",flexWrap:"wrap"}}>
+          {["zRAM LZ4","Predictive Preload","SWAP on UFS 3.1","Jemalloc","Memory Pressure Daemon"].map(c=><Chip key={c}>{c}</Chip>)}
+        </div>
+      </Card>
+    </div>
+  </div>
+);
+
+const S3=()=>(
+  <div>
+    <SH number="03" title="User Experience Design" subtitle="Every millisecond is a design decision"/>
+    <Card style={{marginBottom:"24px"}}>
+      <h3 style={{fontSize:"15px",fontWeight:"700",color:"rgba(255,255,255,0.9)",fontFamily:"'Syne',sans-serif",marginBottom:"13px"}}>Motion Language: "Elastic Gravity"</h3>
+      <p style={{fontSize:"13px",color:"rgba(255,255,255,0.5)",lineHeight:"1.8",marginBottom:"13px"}}>VELOX defines a proprietary motion system called <H>Elastic Gravity</H>. All animations obey a single physics model: objects have mass, velocity, and spring tension. A card swipe resists, then releases, then <H>settles with a micro-bounce</H> that costs 2 frames but signals physical reality to the brain — the same trick Apple uses in iOS rubber-banding.</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"10px"}}>
+        {[{name:"Spring Curve",value:"0.34,1.56,0.64,1.0",label:"Cubic Bezier"},{name:"Touch Response",value:"<8ms",label:"Input-to-pixel"},{name:"Screen Transition",value:"280ms",label:"Page swap"},{name:"Haptic Sync",value:"±2ms",label:"With animation"}].map(m=>(
+          <div key={m.name} style={{background:"rgba(0,0,0,0.3)",borderRadius:"8px",border:"1px solid rgba(255,255,255,0.06)",padding:"12px",textAlign:"center"}}>
+            <div style={{fontSize:"9px",color:"rgba(255,255,255,0.25)",fontFamily:"'DM Mono',monospace",marginBottom:"5px"}}>{m.name}</div>
+            <div style={{fontSize:"12px",fontWeight:"700",color:AC,fontFamily:"'DM Mono',monospace",marginBottom:"3px"}}>{m.value}</div>
+            <div style={{fontSize:"8px",color:"rgba(255,255,255,0.2)",fontFamily:"'DM Mono',monospace"}}>{m.label}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
+      <Card>
+        <h4 style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.8)",fontFamily:"'Syne',sans-serif",marginBottom:"12px"}}>Visual Design System</h4>
+        {[{label:"Depth System",desc:"7-layer translucency stack: foreground chrome, mid content, background blur, ambient color, shadow fill, glow, base"},{label:"Typography",desc:"Display: 'Clash Display Variable'. Body: 'DM Mono'. UI: 'Syne'. All tuned for in-car glance readability at speed"},{label:"Color Logic",desc:"Single accent color per driver profile (default: #00DCB4). Obsidian backgrounds. Never pure white — eye strain protection"},{label:"Icon Language",desc:"Geometric, hairline-weight, pixel-aligned. Signifiers with sub-200ms recognition time — never merely decorative"}].map(item=>(
+          <div key={item.label} style={{marginBottom:"13px"}}>
+            <div style={{fontSize:"11px",fontWeight:"700",color:AC,fontFamily:"'Syne',sans-serif",marginBottom:"4px"}}>{item.label}</div>
+            <div style={{fontSize:"11px",color:"rgba(255,255,255,0.45)",lineHeight:"1.6"}}>{item.desc}</div>
+          </div>
+        ))}
+      </Card>
+      <Card>
+        <h4 style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.8)",fontFamily:"'Syne',sans-serif",marginBottom:"12px"}}>Driving Modes</h4>
+        {[{mode:"FOCUS",desc:"Minimal UI. Only speed, nav turn, and music. No notifications. Auto-activates at highway speeds."},{mode:"AMBIENT",desc:"Parked or traffic. Full dashboard with widgets, AI suggestions, and environmental display."},{mode:"NIGHT",desc:"OLED-optimized blacks. Amber-shifted accent colors to protect night vision. Auto from sunset."},{mode:"SPORT",desc:"Red accents. G-force meter. Lap timer. Performance telemetry overlay. Engine data prominence."}].map(item=>(
+          <div key={item.mode} style={{marginBottom:"10px",padding:"10px",background:"rgba(0,0,0,0.2)",borderRadius:"8px",border:"1px solid rgba(255,255,255,0.05)"}}>
+            <div style={{fontSize:"9px",fontWeight:"700",color:AC,fontFamily:"'DM Mono',monospace",letterSpacing:"0.12em",marginBottom:"4px"}}>{item.mode} MODE</div>
+            <div style={{fontSize:"11px",color:"rgba(255,255,255,0.45)",lineHeight:"1.5"}}>{item.desc}</div>
+          </div>
+        ))}
+      </Card>
+    </div>
+  </div>
+);
+
+const S4=()=>(
+  <div>
+    <SH number="04" title="Apple-Level Smoothness Engineering" subtitle="Zero-jank is not aspirational — it is the contract"/>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"12px",marginBottom:"24px"}}>
+      {[{metric:"Touch Latency",target:"< 8ms",how:"Touchscreen driver patched to bypass Linux input stack. Direct Wayland event injection."},{metric:"Frame Time",target:"8.33ms",how:"120Hz locked. Frame scheduler at SCHED_FIFO priority 99. Never preempted by userspace."},{metric:"Boot to UI",target:"< 3.2s",how:"Initramfs with compressed Squashfs. UI process started before kernel finishes booting remaining services."}].map(m=>(
+        <Card key={m.metric} accent>
+          <div style={{fontSize:"9px",color:"rgba(255,255,255,0.35)",fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",marginBottom:"6px"}}>{m.metric.toUpperCase()}</div>
+          <div style={{fontSize:"24px",fontWeight:"800",color:AC,fontFamily:"'Syne',sans-serif",marginBottom:"8px"}}>{m.target}</div>
+          <div style={{fontSize:"11px",color:"rgba(255,255,255,0.4)",lineHeight:"1.6"}}>{m.how}</div>
+        </Card>
+      ))}
+    </div>
+    <Card style={{marginBottom:"24px"}}>
+      <h3 style={{fontSize:"15px",fontWeight:"700",color:"rgba(255,255,255,0.9)",fontFamily:"'Syne',sans-serif",marginBottom:"15px"}}>The VELOX Zero-Jank Stack</h3>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"20px"}}>
+        {[{title:"Scheduler Optimization",body:"UI thread pinned to Performance cores (P-cores). Background services confined to Efficiency cores (E-cores). No priority inversions — all locks in the render path use POSIX priority inheritance. Custom EAS profile tuned for automotive duty cycles."},{title:"Shader Precompilation",body:"Every UI transition, animation, and widget state compiled to Vulkan SPIR-V shaders at OS install time. Zero runtime shader compilation — the cause of 90% of 'first-launch jank' in Android."},{title:"Predictive Rendering",body:"VELOX's AI watches driver patterns and pre-renders the next likely screen 80ms before the user taps. Confidence threshold: >70%. If wrong: discarded in <1ms. If right: zero perceived latency."},{title:"Thermal Management",body:"Most cheap Android stereos throttle to 60% CPU within 20 minutes in summer. VELOX integrates with vehicle HVAC — requesting minor airflow increases at 75°C. Never drops the render thread."}].map(item=>(
+          <div key={item.title}>
+            <div style={{fontSize:"12px",fontWeight:"700",color:AC,fontFamily:"'Syne',sans-serif",marginBottom:"8px"}}>{item.title}</div>
+            <div style={{fontSize:"12px",color:"rgba(255,255,255,0.45)",lineHeight:"1.7"}}>{item.body}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+    <div>
+      <div style={{fontSize:"10px",color:"rgba(255,255,255,0.3)",fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",marginBottom:"14px"}}>PERFORMANCE TARGETS vs COMPETITION</div>
+      <Bar label="VELOX — Touch-to-Pixel" value={99}/>
+      <Bar label="CarPlay (iPhone 15)" value={88} color="#4affcc"/>
+      <Bar label="Android Auto (Pixel 8)" value={82} color="#4a9eff"/>
+      <Bar label="Typical OEM System" value={45} color="#ff6b4a"/>
+      <Bar label="Cheap Android Stereo" value={22} color="#ff4a4a"/>
+    </div>
+  </div>
+);
+
+const S5=()=>(
+  <div>
+    <SH number="05" title="AI-Native Vehicle Experience" subtitle="Not ChatGPT in a car. A co-pilot that learns you."/>
+    <Card accent glow style={{marginBottom:"24px"}}>
+      <h3 style={{fontSize:"15px",fontWeight:"700",color:AC,fontFamily:"'Syne',sans-serif",marginBottom:"13px"}}>AETHER — The VELOX AI Engine</h3>
+      <p style={{fontSize:"13px",color:"rgba(255,255,255,0.55)",lineHeight:"1.8",marginBottom:"13px"}}>AETHER is a <H>3-tier AI architecture</H>: a 1.3B parameter on-device LLM (quantized to INT4, NPU at 40 tokens/sec) handles real-time voice and personalization. A 7B cloud model handles complex reasoning and route planning. A third, ultra-thin 50M parameter <H>reflex model</H> handles sub-50ms reactions — always on, never waiting.</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px"}}>
+        {[{name:"AETHER Reflex",size:"50M params",latency:"<50ms",role:"Instant reactions"},{name:"AETHER Core",size:"1.3B params",latency:"<200ms",role:"On-device LLM"},{name:"AETHER Cloud",size:"7B params",latency:"<800ms",role:"Deep reasoning"}].map(m=>(
+          <div key={m.name} style={{background:"rgba(0,0,0,0.3)",borderRadius:"8px",border:"1px solid rgba(0,220,180,0.15)",padding:"12px"}}>
+            <div style={{fontSize:"11px",fontWeight:"700",color:AC,marginBottom:"5px"}}>{m.name}</div>
+            <div style={{fontSize:"10px",color:"rgba(255,255,255,0.4)",fontFamily:"'DM Mono',monospace",marginBottom:"3px"}}>{m.size} · {m.latency}</div>
+            <div style={{fontSize:"10px",color:"rgba(255,255,255,0.3)"}}>{m.role}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
+      <Card>
+        <h4 style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.8)",fontFamily:"'Syne',sans-serif",marginBottom:"11px"}}>What AETHER Does</h4>
+        {["Learns your commute routes and pre-loads them Monday morning","Detects driver fatigue via steering micro-corrections + eye tracking","Dynamically adjusts music BPM to match driving speed and heart rate","Summarizes missed calls at red lights — never while moving","Suggests charging stops based on range, traffic, and your schedule","Adapts climate zone by zone based on sunlight angle and preferences","Learns your 'morning mood' from calendar and music history","Understands: 'Play something chill but not too slow, I'm tired'"].map(r=>(
+          <div key={r} style={{display:"flex",gap:"8px",marginBottom:"8px",alignItems:"flex-start"}}>
+            <span style={{color:AC,fontSize:"10px",marginTop:"2px",flexShrink:0}}>⟁</span>
+            <span style={{fontSize:"11px",color:"rgba(255,255,255,0.5)",lineHeight:"1.5"}}>{r}</span>
+          </div>
+        ))}
+      </Card>
+      <Card>
+        <h4 style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.8)",fontFamily:"'Syne',sans-serif",marginBottom:"11px"}}>Privacy Architecture</h4>
+        <p style={{fontSize:"12px",color:"rgba(255,255,255,0.45)",lineHeight:"1.7",marginBottom:"11px"}}>All personalization data stays <H>on-device by default</H>. Trained via federated learning without raw data ever leaving the vehicle. Cloud access requires explicit per-session consent.</p>
+        <p style={{fontSize:"12px",color:"rgba(255,255,255,0.45)",lineHeight:"1.7",marginBottom:"11px"}}>Voice audio processed in a <H>sandboxed ARM TrustZone enclave</H>. Raw audio never stored — only intent vectors. Hardware mic kill switch physically disconnects in Privacy Mode.</p>
+        <div style={{display:"flex",flexWrap:"wrap"}}>
+          {["On-Device First","Federated Learning","ARM TrustZone","HW Mic Kill","Zero Raw Audio Storage"].map(c=><Chip key={c} accent>{c}</Chip>)}
+        </div>
+      </Card>
+    </div>
+  </div>
+);
+
+const S6=()=>(
+  <div>
+    <SH number="06" title="Audio & Visual Experience" subtitle="When the car starts, the world should feel different"/>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"24px"}}>
+      <Card accent glow>
+        <h4 style={{fontSize:"13px",fontWeight:"700",color:AC,fontFamily:"'Syne',sans-serif",marginBottom:"11px"}}>Startup Sequence — "The Awakening"</h4>
+        <p style={{fontSize:"12px",color:"rgba(255,255,255,0.5)",lineHeight:"1.7",marginBottom:"10px"}}>Duration: <H>2.8 seconds</H>. Screen fades from black. The VELOX glyph expands in a fluid Bézier bloom — not a burst, a breath. Ambient lighting in the car syncs — strips pulsing from the center console outward. Silence for 0.4s. Then the UI materializes panel by panel, each with a 40ms stagger.</p>
+        <p style={{fontSize:"12px",color:"rgba(255,255,255,0.5)",lineHeight:"1.7"}}>The startup sound: sub-bass resonance at 60Hz (felt in the seat), rising to a clear 2kHz harmonic tone, then spatial decay. <H>1.8s total</H>. Power, precision, serenity.</p>
+      </Card>
+      <Card>
+        <h4 style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.8)",fontFamily:"'Syne',sans-serif",marginBottom:"11px"}}>Spatial Audio Engine</h4>
+        <p style={{fontSize:"12px",color:"rgba(255,255,255,0.5)",lineHeight:"1.7",marginBottom:"11px"}}>VELOX maps the car's interior as a <H>3D acoustic space</H>. Speaker positions, headrest distance, window reflection coefficients — all parameterized per vehicle profile. Navigation voice comes from directly ahead. Alerts come from directionally relevant speakers.</p>
+        <div style={{display:"flex",flexWrap:"wrap"}}>
+          {["HRTF Processing","Dolby Atmos Car","Per-Vehicle EQ","Binaural Alerts","AI Loudness Adaptation"].map(c=><Chip key={c}>{c}</Chip>)}
+        </div>
+      </Card>
+    </div>
+    <Card>
+      <h3 style={{fontSize:"15px",fontWeight:"700",color:"rgba(255,255,255,0.9)",fontFamily:"'Syne',sans-serif",marginBottom:"13px"}}>UI Sound Design Philosophy</h3>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"12px"}}>
+        {[{action:"Tap",sound:"4ms micro-click, 800Hz, 8ms decay. Satisfying but never distracting."},{action:"Swipe",sound:"Velocity-matched whoosh. Faster swipe = higher pitch, shorter decay."},{action:"Error",sound:"Two-tone descending. Never harsh. 'Gentle correction' rather than alarm."},{action:"Success",sound:"Single ascending chime, 1200Hz, 60ms. Warm, not clinical."}].map(s=>(
+          <div key={s.action} style={{background:"rgba(0,0,0,0.3)",borderRadius:"8px",border:"1px solid rgba(255,255,255,0.06)",padding:"12px"}}>
+            <div style={{fontSize:"10px",fontWeight:"700",color:AC,fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",marginBottom:"5px"}}>{s.action.toUpperCase()}</div>
+            <div style={{fontSize:"10px",color:"rgba(255,255,255,0.4)",lineHeight:"1.6"}}>{s.sound}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  </div>
+);
+
+const S7=()=>(
+  <div>
+    <SH number="07" title="Hardware Strategy" subtitle="Premium experience on real-world silicon"/>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"12px",marginBottom:"24px"}}>
+      {[{tier:"VELOX SE",target:"Aftermarket / Budget",chip:"Snapdragon 6 Gen 2 / T616",ram:"6GB LPDDR4X",storage:"64GB UFS 2.2",display:"60–90Hz IPS",price:"$80–150 HW target"},{tier:"VELOX",target:"Mid OEM / Premium After",chip:"Snapdragon 8cx Gen 3 / A523",ram:"8GB LPDDR5",storage:"128GB UFS 3.1",display:"120Hz AMOLED",price:"$200–400 HW target"},{tier:"VELOX PRO",target:"Luxury OEM / EV",chip:"Snapdragon Cockpit Elite",ram:"16GB LPDDR5X",storage:"256GB UFS 4.0",display:"144Hz LTPO OLED",price:"$600–1200 HW target"}].map(t=>(
+        <Card key={t.tier} accent={t.tier==="VELOX"}>
+          <div style={{fontSize:"12px",fontWeight:"800",color:t.tier==="VELOX"?AC:"rgba(255,255,255,0.7)",fontFamily:"'Syne',sans-serif",marginBottom:"4px"}}>{t.tier}</div>
+          <div style={{fontSize:"9px",color:"rgba(255,255,255,0.25)",fontFamily:"'DM Mono',monospace",marginBottom:"11px"}}>{t.target}</div>
+          {[["SoC",t.chip],["RAM",t.ram],["Storage",t.storage],["Display",t.display],["Price",t.price]].map(([k,v])=>(
+            <div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:"6px"}}>
+              <span style={{fontSize:"10px",color:"rgba(255,255,255,0.3)",fontFamily:"'DM Mono',monospace"}}>{k}</span>
+              <span style={{fontSize:"10px",color:"rgba(255,255,255,0.7)",fontFamily:"'DM Mono',monospace",textAlign:"right",maxWidth:"58%"}}>{v}</span>
+            </div>
+          ))}
+        </Card>
+      ))}
+    </div>
+    <Card>
+      <h3 style={{fontSize:"15px",fontWeight:"700",color:"rgba(255,255,255,0.9)",fontFamily:"'Syne',sans-serif",marginBottom:"13px"}}>Making Budget Hardware Feel Premium</h3>
+      <p style={{fontSize:"13px",color:"rgba(255,255,255,0.5)",lineHeight:"1.8",marginBottom:"13px"}}>The $150 aftermarket head unit runs on a T616 (Mali-G57 GPU). VELOX's approach: <H>aggressively downscale the render resolution to 720p internally</H>, then upscale via a custom ML super-resolution shader (4-tap bilinear + edge-aware sharpening). The user sees sharp output; the GPU renders at half the pixel count. Combined with frame interpolation for 60→90Hz, the experience is indistinguishable from native 90Hz at full resolution.</p>
+      <div style={{display:"flex",flexWrap:"wrap"}}>
+        {["ML Super-Resolution","Frame Interpolation","Adaptive Quality","GPU-Aware Compositor","Shader LOD System","Tile Rendering"].map(c=><Chip key={c} accent>{c}</Chip>)}
+      </div>
+    </Card>
+  </div>
+);
+
+const S8=()=>(
+  <div>
+    <SH number="08" title="App Ecosystem" subtitle="The platform that developers actually want to build for"/>
+    <Card style={{marginBottom:"24px"}}>
+      <h3 style={{fontSize:"15px",fontWeight:"700",color:"rgba(255,255,255,0.9)",fontFamily:"'Syne',sans-serif",marginBottom:"13px"}}>The VELOX SDK — "Drive Kit"</h3>
+      <p style={{fontSize:"13px",color:"rgba(255,255,255,0.5)",lineHeight:"1.8",marginBottom:"13px"}}>Drive Kit is built on <H>React Native with a custom Skia renderer</H>. Developers write once, deploy on all VELOX tiers. The SDK enforces the VELOX Design Language System automatically. Safety APIs are enforced at compile time: <H>any UI showing more than 2 interactive elements while the vehicle is in motion fails SDK validation</H>.</p>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
+        {[{title:"Android App Support",body:"Via a containerized AOSP 14 compatibility layer. Apps run in a sandboxed VM, GPU-accelerated, but CANNOT access vehicle CAN bus, microphone, or location without explicit Drive Kit permission grants."},{title:"Native Drive Kit Apps",body:"First-class citizens. Full access to AETHER AI APIs, CAN bus telemetry, ambient lighting, haptic actuators, spatial audio. Revenue split: 70/30 (developer/VELOX). Subscriptions: 85/15 after year 1."}].map(item=>(
+          <div key={item.title}>
+            <div style={{fontSize:"12px",fontWeight:"700",color:AC,marginBottom:"8px",fontFamily:"'Syne',sans-serif"}}>{item.title}</div>
+            <div style={{fontSize:"12px",color:"rgba(255,255,255,0.45)",lineHeight:"1.7"}}>{item.body}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"12px"}}>
+      {[{name:"VELOX Store",desc:"Curated. Every app reviewed by a Drive Safety team. No sideloading on OEM builds. Aftermarket builds: user toggle."},{name:"Fleet Console",desc:"B2B portal for logistics companies. Mass OTA, telemetry dashboards, driver behavior analytics."},{name:"VELOX Analytics",desc:"Aggregate, anonymized driving insights sold to city planners, insurers, and map providers. Major revenue stream."}].map(s=>(
+        <Card key={s.name}>
+          <div style={{fontSize:"12px",fontWeight:"700",color:AC,fontFamily:"'Syne',sans-serif",marginBottom:"8px"}}>{s.name}</div>
+          <div style={{fontSize:"11px",color:"rgba(255,255,255,0.45)",lineHeight:"1.6"}}>{s.desc}</div>
+        </Card>
+      ))}
+    </div>
+  </div>
+);
+
+const S9=()=>(
+  <div>
+    <SH number="09" title="Automotive Security" subtitle="The attack surface is the entire vehicle"/>
+    <Card style={{marginBottom:"24px"}}>
+      <h3 style={{fontSize:"15px",fontWeight:"700",color:"rgba(255,255,255,0.9)",fontFamily:"'Syne',sans-serif",marginBottom:"13px"}}>Threat Model</h3>
+      <p style={{fontSize:"13px",color:"rgba(255,255,255,0.5)",lineHeight:"1.8",marginBottom:"15px"}}>Unlike phone OS security, VELOX must protect not just data, but <H>physical safety</H>. A compromised car OS could unlock doors, disable brakes, or feed false navigation data. The security model is designed under <H>ISO 21434 (Automotive Cybersecurity)</H> and UNECE WP.29 regulations.</p>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
+        {[{title:"Secure Boot Chain",items:["Hardware root of trust (ARM TrustZone / TPM 2.0)","Bootloader signed with OEM key, verified by VELOX cert authority","Each kernel module verified against signed manifest","UI process launches only after full chain validation","Rollback protection: downgrade attacks blocked at hardware level"]},{title:"CAN Bus Protection",items:["CAN traffic filtered through a dedicated security MCU before reaching infotainment","Message authentication codes (MACs) on all safety-critical CAN frames","Infotainment can READ vehicle data but never WRITE to safety ECUs","Anomaly detection: ML model flags unusual CAN message patterns in real-time","Physical isolation: infotainment SoC on separate CAN segment from powertrain"]}].map(section=>(
+          <div key={section.title}>
+            <div style={{fontSize:"12px",fontWeight:"700",color:AC,fontFamily:"'Syne',sans-serif",marginBottom:"9px"}}>{section.title}</div>
+            {section.items.map(item=>(
+              <div key={item} style={{display:"flex",gap:"8px",marginBottom:"6px",alignItems:"flex-start"}}>
+                <span style={{color:AC,fontSize:"8px",marginTop:"4px",flexShrink:0}}>■</span>
+                <span style={{fontSize:"11px",color:"rgba(255,255,255,0.45)",lineHeight:"1.5"}}>{item}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </Card>
+    <Card accent>
+      <h4 style={{fontSize:"13px",fontWeight:"700",color:AC,fontFamily:"'Syne',sans-serif",marginBottom:"9px"}}>OTA Security</h4>
+      <p style={{fontSize:"12px",color:"rgba(255,255,255,0.5)",lineHeight:"1.7"}}>Updates delivered via <H>delta compression</H> (BSDiff, typically 40–200MB). Each package signed with a 3-key ceremony requiring 2-of-3 key holders. Applied to a <H>B partition</H> while A runs — instant rollback if health checks fail. Activates on next ignition. Zero downtime.</p>
+    </Card>
+  </div>
+);
+
+const S10=()=>(
+  <div>
+    <SH number="10" title="Business & Company Strategy" subtitle="Building the Apple of automotive software"/>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"12px",marginBottom:"24px"}}>
+      {[{stream:"OEM Licensing",model:"$8–25/unit royalty. At 500K units/year: $4–12.5M ARR",growth:"High"},{stream:"App Store",model:"30% on paid apps, 15% on subscriptions. ~$3M ARR at 1M MAU",growth:"Compounding"},{stream:"VELOX+ Subscription",model:"$4.99/month — cloud AI, traffic, premium maps. 20% attach = $12M ARR at 1M vehicles",growth:"Recurring"},{stream:"Fleet B2B",model:"$30/vehicle/month. 10K vehicles = $3.6M ARR",growth:"High Margin"},{stream:"Data Insights",model:"Anonymized aggregate driving data to insurers, municipalities, map providers",growth:"Passive"},{stream:"Aftermarket Retail",model:"VELOX-certified hardware via AutoZone, Amazon, Costco. $40 margin per unit",growth:"Volume"}].map(s=>(
+        <Card key={s.stream}>
+          <div style={{fontSize:"11px",fontWeight:"700",color:AC,fontFamily:"'Syne',sans-serif",marginBottom:"6px"}}>{s.stream}</div>
+          <div style={{fontSize:"10px",color:"rgba(255,255,255,0.4)",lineHeight:"1.6",marginBottom:"8px"}}>{s.model}</div>
+          <Chip accent>{s.growth}</Chip>
+        </Card>
+      ))}
+    </div>
+    <Card>
+      <h3 style={{fontSize:"15px",fontWeight:"700",color:"rgba(255,255,255,0.9)",fontFamily:"'Syne',sans-serif",marginBottom:"13px"}}>Go-To-Market: The Trojan Horse Strategy</h3>
+      <p style={{fontSize:"13px",color:"rgba(255,255,255,0.5)",lineHeight:"1.8",marginBottom:"12px"}}>Phase 1: Dominate the aftermarket. There are <H>180 million Android-based aftermarket stereos</H> sold globally per year, mostly running terrible, unupdated ROMs. VELOX enters here — free OS, monetize through subscriptions and app store. Phase 2: OEM negotiations backed by <H>proven user love metrics</H>. Phase 3: <H>VELOX Inside</H> — the "Intel Inside" of automotive software.</p>
+      <div style={{display:"flex",flexWrap:"wrap"}}>
+        {["180M Aftermarket Stereos/year","62% use outdated Android 9 or earlier","No dominant aftermarket OS brand exists today","App Store has no automotive category leader"].map(f=><Tag key={f}>{f}</Tag>)}
+      </div>
+    </Card>
+  </div>
+);
+
+const S11=()=>(
+  <div>
+    <SH number="11" title="10-Year Future Roadmap" subtitle="From infotainment OS to the nervous system of transportation"/>
+    <div style={{position:"relative"}}>
+      <div style={{position:"absolute",left:"50%",top:"20px",bottom:"20px",width:"1px",background:"rgba(0,220,180,0.15)",transform:"translateX(-50%)"}}/>
+      {[{year:"2025–2026",side:"left",title:"VELOX 1.0 — Aftermarket Launch",points:["Snapdragon 6 Gen 2 / T616 support","Core OS: maps, music, climate, AI voice","Drive Kit SDK beta","VELOX Store launch with 50+ curated apps","OTA infrastructure v1"]},{year:"2027",side:"right",title:"VELOX 2.0 — OEM Partnerships",points:["First OEM integration (Tier-2 manufacturer)","VELOX Pro hardware reference design","AETHER AI v2 — full on-device LLM","Android app compatibility layer","Spatial audio engine"]},{year:"2028–2029",side:"left",title:"VELOX 3.0 — Ecosystem Scale",points:["10M+ active vehicles","VELOX+ subscription at $4.99/mo","V2X (vehicle-to-infrastructure) integration","AR navigation overlay (HUD partnership)","Autonomous driving UI framework"]},{year:"2030–2031",side:"right",title:"VELOX 4.0 — Autonomous Era",points:["Full Level 3 autonomy UI paradigm","Cabin transforms: driver becomes passenger","Holographic interaction research","Cross-vehicle fleet intelligence","Smart city data partnerships"]},{year:"2032–2035",side:"left",title:"VELOX 5.0 — Platform Dominance",points:["30M+ active vehicles","$5B+ revenue","VELOX Neural: brain-computer interface research","AR windshield OS layer","Vehicle OS becomes the 4th major computing platform"]}].map((item,i)=>(
+        <div key={item.year} style={{display:"flex",marginBottom:"26px",flexDirection:item.side==="right"?"row-reverse":"row",alignItems:"flex-start",gap:"18px"}}>
+          <div style={{flex:"0 0 calc(50% - 18px)"}}>
+            <Card accent={i===0}>
+              <div style={{fontSize:"9px",color:AC,fontFamily:"'DM Mono',monospace",letterSpacing:"0.12em",marginBottom:"5px"}}>{item.year}</div>
+              <div style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.85)",fontFamily:"'Syne',sans-serif",marginBottom:"9px"}}>{item.title}</div>
+              {item.points.map(p=>(
+                <div key={p} style={{display:"flex",gap:"8px",marginBottom:"5px"}}>
+                  <span style={{color:AC,fontSize:"8px",marginTop:"3px",flexShrink:0}}>▸</span>
+                  <span style={{fontSize:"11px",color:"rgba(255,255,255,0.45)",lineHeight:"1.5"}}>{p}</span>
+                </div>
+              ))}
+            </Card>
+          </div>
+          <div style={{flex:"0 0 36px",display:"flex",justifyContent:"center",paddingTop:"16px"}}>
+            <div style={{width:"11px",height:"11px",borderRadius:"50%",background:i===0?AC:"rgba(0,220,180,0.3)",border:`2px solid ${i===0?AC:"rgba(0,220,180,0.4)"}`,boxShadow:i===0?`0 0 12px ${AC}`:"none",flexShrink:0}}/>
+          </div>
+          <div style={{flex:"0 0 calc(50% - 18px)"}}/>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const S12=()=>(
+  <div>
+    <SH number="12" title="Execution Plan" subtitle="What to build first, with whom, for how much"/>
+    <Card accent glow style={{marginBottom:"24px"}}>
+      <h3 style={{fontSize:"15px",fontWeight:"700",color:AC,fontFamily:"'Syne',sans-serif",marginBottom:"13px"}}>MVP Scope — 12 Months, $2.4M</h3>
+      <p style={{fontSize:"13px",color:"rgba(255,255,255,0.55)",lineHeight:"1.8",marginBottom:"15px"}}>The MVP is not a showcase — it's a <H>daily driver that replaces Android ROMs</H> on the 3 most popular aftermarket stereo chipsets (T616, Snapdragon 665, RK3566). It must be smoother than what users have, prettier than anything available, and stable enough to not crash on a road trip. Nothing else matters at MVP.</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px"}}>
+        {[{phase:"M1–M3",title:"Core OS & HAL",tasks:"Linux RT kernel build · Wayland compositor · Touch driver optimizations · UI design system · 3 chipset HALs"},{phase:"M4–M7",title:"App Shell + AI",tasks:"Navigation (offline maps) · Music player · AETHER voice (50M reflex model) · Climate UI · OTA v1"},{phase:"M8–M12",title:"Polish + Launch",tasks:"Animation pass · Haptic system · Sound design · VELOX Store alpha · Community beta · Product launch"}].map(p=>(
+          <div key={p.phase} style={{background:"rgba(0,0,0,0.3)",borderRadius:"8px",border:"1px solid rgba(0,220,180,0.15)",padding:"13px"}}>
+            <div style={{fontSize:"9px",color:AC,fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",marginBottom:"4px"}}>{p.phase}</div>
+            <div style={{fontSize:"12px",fontWeight:"700",color:"rgba(255,255,255,0.8)",fontFamily:"'Syne',sans-serif",marginBottom:"7px"}}>{p.title}</div>
+            <div style={{fontSize:"10px",color:"rgba(255,255,255,0.35)",lineHeight:"1.6",fontFamily:"'DM Mono',monospace"}}>{p.tasks}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"24px"}}>
+      <Card>
+        <h4 style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.8)",fontFamily:"'Syne',sans-serif",marginBottom:"11px"}}>Founding Team Requirements</h4>
+        {[["Kernel Engineer","Linux RT, PREEMPT_RT, HAL — $180K"],["GPU / Graphics Engineer","Vulkan, Wayland, compositors — $190K"],["AI/ML Engineer","Edge LLM, quantization, NPU — $185K"],["Automotive HMI Designer","UX + motion design, in-car — $140K"],["React Native / Skia Dev","Drive Kit SDK lead — $160K"],["Automotive Security","ISO 21434, CAN bus, TrustZone — $175K"],["Product Manager","Automotive + consumer OS — $150K"],["CTO / Architect","OS-level, automotive domain — $220K equity-heavy"]].map(([role,comp])=>(
+          <div key={role} style={{display:"flex",justifyContent:"space-between",marginBottom:"8px",gap:"8px"}}>
+            <span style={{fontSize:"11px",color:"rgba(255,255,255,0.6)"}}>{role}</span>
+            <span style={{fontSize:"9px",color:"rgba(255,255,255,0.3)",fontFamily:"'DM Mono',monospace",textAlign:"right",flexShrink:0}}>{comp}</span>
+          </div>
+        ))}
+      </Card>
+      <Card>
+        <h4 style={{fontSize:"13px",fontWeight:"700",color:"rgba(255,255,255,0.8)",fontFamily:"'Syne',sans-serif",marginBottom:"11px"}}>Budget Breakdown — Seed Round $4M</h4>
+        {[["Team (12 months)","$2.4M",60],["Hardware / Lab","$300K",7.5],["Cloud infra (OTA, AI)","$200K",5],["Legal / Compliance","$150K",3.75],["Design & UX research","$120K",3],["Marketing / Community","$180K",4.5],["Buffer / Runway","$650K",16.25]].map(([item,amount,pct])=>(
+          <div key={item} style={{marginBottom:"10px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:"3px"}}>
+              <span style={{fontSize:"10px",color:"rgba(255,255,255,0.5)"}}>{item}</span>
+              <span style={{fontSize:"10px",color:AC,fontFamily:"'DM Mono',monospace"}}>{amount}</span>
+            </div>
+            <div style={{height:"2px",background:"rgba(255,255,255,0.05)",borderRadius:"2px"}}>
+              <div style={{width:`${pct}%`,height:"100%",background:"rgba(0,220,180,0.5)",borderRadius:"2px"}}/>
+            </div>
+          </div>
+        ))}
+      </Card>
+    </div>
+    <Card style={{textAlign:"center",padding:"32px"}}>
+      <div style={{fontSize:"11px",color:"rgba(255,255,255,0.25)",fontFamily:"'DM Mono',monospace",letterSpacing:"0.15em",marginBottom:"12px"}}>THE NORTH STAR</div>
+      <h3 style={{fontSize:"clamp(16px,3vw,26px)",fontWeight:"800",fontFamily:"'Syne',sans-serif",background:"linear-gradient(135deg,#ffffff 0%,#00dcb4 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:"14px"}}>"When someone gets in a car with VELOX, they feel it before they see it."</h3>
+      <p style={{fontSize:"13px",color:"rgba(255,255,255,0.35)",lineHeight:"1.7",maxWidth:"520px",margin:"0 auto"}}>That is the product. Not the feature list. Not the spec sheet. The moment a driver touches the screen and something responds — instantly, beautifully, intelligently — and they think: <em style={{color:"rgba(255,255,255,0.55)"}}>"I don't want any other car to not have this."</em></p>
+    </Card>
+  </div>
+);
+
+const SM={vision:S1,architecture:S2,ux:S3,smoothness:S4,ai:S5,audio:S6,hardware:S7,ecosystem:S8,security:S9,business:S10,roadmap:S11,execution:S12};
+
+function App(){
+  const [active,setActive]=useState("vision");
+  const [scrolled,setScrolled]=useState(false);
+  const [animKey,setAnimKey]=useState(0);
+  const ref=useRef(null);
+  useEffect(()=>{
+    const el=ref.current;
+    if(!el)return;
+    const h=()=>setScrolled(el.scrollTop>20);
+    el.addEventListener("scroll",h);
+    return()=>el.removeEventListener("scroll",h);
+  },[]);
+  const go=(id)=>{setActive(id);setAnimKey(k=>k+1);if(ref.current)ref.current.scrollTo({top:0,behavior:"smooth"});};
+  const ActiveSection=SM[active];
+  return(
+    <div style={{display:"flex",height:"100vh",width:"100%",background:"#040810",overflow:"hidden"}}>
+      <div style={{width:"200px",flexShrink:0,borderRight:"1px solid rgba(255,255,255,0.06)",display:"flex",flexDirection:"column",background:"rgba(0,0,0,0.4)"}}>
+        <div style={{padding:"20px 16px 16px",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+          <div style={{fontSize:"16px",fontWeight:"800",letterSpacing:"0.08em",color:AC}}>VELOX OS</div>
+          <div style={{fontSize:"9px",color:"rgba(255,255,255,0.2)",fontFamily:"'DM Mono',monospace",letterSpacing:"0.12em",marginTop:"2px"}}>DESIGN BLUEPRINT v1.0</div>
+        </div>
+        <nav style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
+          {sections.map(s=>(
+            <button key={s.id} onClick={()=>go(s.id)} style={{width:"100%",padding:"9px 16px",background:active===s.id?"rgba(0,220,180,0.08)":"transparent",border:"none",borderLeft:`2px solid ${active===s.id?AC:"transparent"}`,textAlign:"left",display:"flex",alignItems:"center",gap:"10px",transition:"all 0.15s ease"}}>
+              <span style={{fontSize:"11px",color:active===s.id?AC:"rgba(255,255,255,0.2)",width:"14px",textAlign:"center"}}>{s.icon}</span>
+              <span style={{fontSize:"11px",fontFamily:"'DM Mono',monospace",color:active===s.id?"#ffffff":"rgba(255,255,255,0.3)",letterSpacing:"0.04em"}}>{s.label}</span>
+            </button>
+          ))}
+        </nav>
+        <div style={{padding:"12px 16px",borderTop:"1px solid rgba(255,255,255,0.05)"}}>
+          <div style={{fontSize:"9px",color:"rgba(255,255,255,0.15)",fontFamily:"'DM Mono',monospace",lineHeight:"1.6"}}>Built for founders,<br/>engineers &amp; visionaries.</div>
+        </div>
+      </div>
+      <div ref={ref} style={{flex:1,overflowY:"auto",position:"relative"}}>
+        <div style={{position:"fixed",top:0,left:"200px",right:0,bottom:0,background:"radial-gradient(ellipse at 70% 20%,rgba(0,220,180,0.04) 0%,transparent 50%)",pointerEvents:"none",zIndex:0}}/>
+        <div style={{position:"sticky",top:0,zIndex:10,padding:"12px 36px",background:scrolled?"rgba(4,8,16,0.92)":"transparent",backdropFilter:scrolled?"blur(16px)":"none",borderBottom:scrolled?"1px solid rgba(255,255,255,0.06)":"1px solid transparent",transition:"all 0.3s ease",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{fontSize:"11px",color:"rgba(255,255,255,0.2)",fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em"}}>{sections.find(s=>s.id===active)?.label}</div>
+          <div style={{display:"flex",gap:"6px"}}>
+            {sections.slice(0,6).map(s=>(
+              <div key={s.id} onClick={()=>go(s.id)} style={{width:"6px",height:"6px",borderRadius:"50%",background:s.id===active?AC:"rgba(255,255,255,0.1)",cursor:"pointer",boxShadow:s.id===active?`0 0 6px ${AC}`:"none",transition:"all 0.2s ease"}}/>
+            ))}
+          </div>
+        </div>
+        <div key={animKey} className="fs" style={{padding:"0 36px 60px",position:"relative",zIndex:1}}>
+          <ActiveSection/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
